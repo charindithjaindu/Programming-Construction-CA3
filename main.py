@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import settings
 from models import Question, SimilarityResponse, QuestionInput, SimilarityRequest, WordCheckRequest, WordCheckResponse
@@ -7,6 +8,15 @@ from difflib import SequenceMatcher
 from bson import ObjectId
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 async def startup_db_client():

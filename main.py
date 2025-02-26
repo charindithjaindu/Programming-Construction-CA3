@@ -48,11 +48,17 @@ async def check_similarity(question: SimilarityRequest):
     similar_questions = []
     cursor = app.mongodb.questions.find({})
     
+    # Clean input text by removing extra whitespace and line breaks
+    input_text = ' '.join(question.text.split())
+    
     async for existing_question in cursor:
+        # Clean existing question text
+        existing_text = ' '.join(existing_question["text"].split())
+        
         similarity = SequenceMatcher(
             None, 
-            question.text.lower(), 
-            existing_question["text"].lower()
+            input_text.lower(), 
+            existing_text.lower()
         ).ratio()
         
         if similarity > 0.6:

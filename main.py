@@ -9,13 +9,14 @@ from bson import ObjectId
 
 app = FastAPI()
 
-# Add CORS middleware
+# Update CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,  # Changed to False since we're using allow_origins=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly include OPTIONS
     allow_headers=["*"],
+    max_age=86400,  # Cache preflight requests for 24 hours
 )
 
 @app.on_event("startup")
@@ -53,16 +54,19 @@ async def delete_question(question_id: str):
         raise HTTPException(status_code=404, detail="Question not found")
     return {"message": "Question deleted successfully"}
 
+@app.get("/questions/")
+async def get_questions():
+    count = await app.mongodb.questions.count_documents({})
+    return {"total_questions": count}
+
 @app.post("/questions/check-similarity/", response_model=SimilarityResponse)
 async def check_similarity(question: SimilarityRequest):
-    similar_questions = []
+    similar_count = 0
     cursor = app.mongodb.questions.find({})
     
-    # Clean input text by removing extra whitespace and line breaks
     input_text = ' '.join(question.text.split())
     
     async for existing_question in cursor:
-        # Clean existing question text
         existing_text = ' '.join(existing_question["text"].split())
         
         similarity = SequenceMatcher(
@@ -72,54 +76,27 @@ async def check_similarity(question: SimilarityRequest):
         ).ratio()
         
         if similarity > 0.6:
-            similar_questions.append({
-                "id": str(existing_question["_id"]),
-                "text": existing_question["text"],
-                "similarity": round(similarity * 100, 2)
-            })
+            similar_count += 1
     
     return SimilarityResponse(
-        similar_questions=similar_questions,
-        similarity_count=len(similar_questions)
+        similarity_count=similar_count
     )
-
-@app.get("/questions/")
-async def get_questions():
-    questions = []
-    cursor = app.mongodb.questions.find({})
-    async for question in cursor:
-        questions.append({
-            "id": str(question["_id"]),
-            "text": question["text"],
-            "created_at": question["created_at"]
-        })
-    return questions
 
 @app.post("/questions/check-words/", response_model=WordCheckResponse)
 async def check_words(request: WordCheckRequest):
-    # Split input into words and convert to lowercase
     input_words = set(word.lower() for word in request.text.split())
-    
-    matching_questions = []
+    match_count = 0
     cursor = app.mongodb.questions.find({})
     
     async for existing_question in cursor:
-        # Split existing question into words
         question_words = set(word.lower() for word in existing_question["text"].split())
-        
-        # Find common words
         common_words = input_words.intersection(question_words)
         
-        if common_words:  # If there are any matching words
-            matching_questions.append({
-                "id": str(existing_question["_id"]),
-                "text": existing_question["text"],
-                "matching_words": list(common_words)
-            })
+        if common_words:
+            match_count += 1
     
     return WordCheckResponse(
-        matching_questions=matching_questions,
-        match_count=len(matching_questions)
+        match_count=match_count
     )
 
 @app.get("/",

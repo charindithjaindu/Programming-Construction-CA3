@@ -14,12 +14,10 @@ class SimilarityRequest(BaseModel):
     text: str
 
 class SimilarityResponse(BaseModel):
-    similar_questions: list[dict]
     similarity_count: int
+
+class WordCheckResponse(BaseModel):
+    match_count: int
     
 class WordCheckRequest(BaseModel):
     text: str
-
-class WordCheckResponse(BaseModel):
-    matching_questions: list[dict]
-    match_count: int

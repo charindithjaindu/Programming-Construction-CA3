@@ -8,7 +8,11 @@ from difflib import SequenceMatcher
 from bson import ObjectId
 import spacy
 
-app = FastAPI()
+app = FastAPI(
+    title="Questions API",
+    description="API for managing and checking similarity of questions",
+    version="1.0.0"
+)
 nlp = spacy.load('en_core_web_sm')
 
 # Update CORS middleware configuration

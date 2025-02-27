@@ -38,8 +38,6 @@ async def shutdown_db_client():
 async def create_question(question: QuestionInput):
     # Check if there are already 10 questions
     count = await app.mongodb.questions.count_documents({})
-    if count >= 10:
-        raise HTTPException(status_code=400, detail="Maximum number of questions (10) reached")
     
     question_data = {
         "text": question.text,

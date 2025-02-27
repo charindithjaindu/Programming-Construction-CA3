@@ -75,7 +75,7 @@ async def check_similarity(question: SimilarityRequest):
         existing_doc = nlp(existing_question["text"])
         similarity = input_doc.similarity(existing_doc)
         
-        if similarity > 0.6:
+        if similarity > 0.7:
             similar_count += 1
     
     return SimilarityResponse(similarity_count=similar_count)

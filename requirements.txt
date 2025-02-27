@@ -4,3 +4,4 @@ motor
 python-dotenv
 pydantic
 pydantic-settings
+spacy

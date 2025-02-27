@@ -6,8 +6,10 @@ from models import Question, SimilarityResponse, QuestionInput, SimilarityReques
 from datetime import datetime
 from difflib import SequenceMatcher
 from bson import ObjectId
+import spacy
 
 app = FastAPI()
+nlp = spacy.load('en_core_web_sm')
 
 # Update CORS middleware configuration
 app.add_middleware(
@@ -61,26 +63,18 @@ async def get_questions():
 
 @app.post("/questions/check-similarity/", response_model=SimilarityResponse)
 async def check_similarity(question: SimilarityRequest):
+    input_doc = nlp(question.text)
     similar_count = 0
+    
     cursor = app.mongodb.questions.find({})
-    
-    input_text = ' '.join(question.text.split())
-    
     async for existing_question in cursor:
-        existing_text = ' '.join(existing_question["text"].split())
-        
-        similarity = SequenceMatcher(
-            None, 
-            input_text.lower(), 
-            existing_text.lower()
-        ).ratio()
+        existing_doc = nlp(existing_question["text"])
+        similarity = input_doc.similarity(existing_doc)
         
         if similarity > 0.6:
             similar_count += 1
     
-    return SimilarityResponse(
-        similarity_count=similar_count
-    )
+    return SimilarityResponse(similarity_count=similar_count)
 
 @app.post("/questions/check-words/", response_model=WordCheckResponse)
 async def check_words(request: WordCheckRequest):

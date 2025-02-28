@@ -14,6 +14,7 @@ class SimilarityRequest(BaseModel):
     text: str
 
 class SimilarityResponse(BaseModel):
+    similar_questions: list[dict]
     similarity_count: int
 
 class WordCheckResponse(BaseModel):

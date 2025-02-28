@@ -4,7 +4,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from config import settings
 from models import Question, SimilarityResponse, QuestionInput, SimilarityRequest, WordCheckRequest, WordCheckResponse
 from datetime import datetime
-from difflib import SequenceMatcher
 from bson import ObjectId
 import spacy
 
@@ -66,7 +65,7 @@ async def get_questions():
 @app.post("/questions/check-similarity/", response_model=SimilarityResponse)
 async def check_similarity(question: SimilarityRequest):
     input_doc = nlp(question.text)
-    similar_count = 0
+    similar_questions = []
     
     cursor = app.mongodb.questions.find({})
     async for existing_question in cursor:
@@ -74,9 +73,36 @@ async def check_similarity(question: SimilarityRequest):
         similarity = input_doc.similarity(existing_doc)
         
         if similarity > 0.7:
-            similar_count += 1
+            similar_questions.append({
+                "id": str(existing_question["_id"]),
+                "text": existing_question["text"],
+                "created_at": existing_question["created_at"],
+                "score": round(similarity * 100, 2)
+            })
     
-    return SimilarityResponse(similarity_count=similar_count)
+    return SimilarityResponse(
+        similar_questions=similar_questions,
+        similarity_count=len(similar_questions)
+    )
+    
+@app.post("/questions/check-similarity-2/", response_model=SimilarityResponse)
+async def check_similarity(question: SimilarityRequest):
+    cursor = app.mongodb.questions.find(
+            {"$text": {"$search": question.text}},
+            {"score": {"$meta": "textScore"}}
+        ).sort([("score", {"$meta": "textScore"})])
+    
+    filtered_results = []
+    async for doc in cursor:
+        if doc.get("score", 0) > 2.5:
+            # Convert ObjectId to string before adding to results
+            doc["_id"] = str(doc["_id"])
+            filtered_results.append(doc)
+    
+    return SimilarityResponse(
+        similar_questions=filtered_results,
+        similarity_count=len(filtered_results)
+    )
 
 @app.post("/questions/check-words/", response_model=WordCheckResponse)
 async def check_words(request: WordCheckRequest):

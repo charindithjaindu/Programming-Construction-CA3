@@ -28,6 +28,23 @@ app.add_middleware(
 async def startup_db_client():
     app.mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)
     app.mongodb = app.mongodb_client[settings.DATABASE_NAME]
+    
+    pipeline = [
+        {"$group": {
+            "_id": "$text",
+            "duplicate_ids": {"$addToSet": "$_id"}, 
+            "count": {"$sum": 1} 
+        }},
+        {"$match": {"count": {"$gt": 1}}}
+    ]
+
+    cursor = app.mongodb.questions.aggregate(pipeline)
+    async for doc in cursor:
+        duplicate_ids = doc["duplicate_ids"]
+        duplicate_ids.pop(0)  # Keep the first one, remove others
+        await app.mongodb.questions.delete_many({"_id": {"$in": duplicate_ids}})
+    
+    print("Duplicate questions removed successfully")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
